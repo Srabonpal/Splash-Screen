@@ -1,0 +1,114 @@
+// home_screen.dart
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../services/api_service.dart';
+import '../providers/auth_provider.dart';
+import '../models/task.dart';
+import '../widgets/task_tile.dart';
+import 'task_form_screen.dart';
+import 'profile_screen.dart';
+
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  late ApiService api;
+  bool loading = false;
+  String? error;
+  List<TaskModel> tasks = [];
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final auth = Provider.of<AuthProvider>(context, listen:false);
+    api = auth.api;
+    _loadTasks();
+  }
+
+  Future<void> _loadTasks() async {
+    setState(()=>loading=true; error=null);
+    final auth = Provider.of<AuthProvider>(context, listen:false);
+    if (auth.token == null) {
+      setState(()=>error='No auth token'); return;
+    }
+    final res = await api.listTasks(auth.token!);
+    if (res['success']) {
+      final data = res['data'];
+      // Expect data to be a list or wrapped object -> adapt as needed
+      List list = [];
+      if (data is List) list = data;
+      else if (data is Map && data['tasks'] is List) list = data['tasks'];
+      tasks = list.map((e) => TaskModel.fromJson(e)).toList();
+    } else {
+      error = res['message'] ?? 'Failed to load tasks';
+    }
+    setState(()=>loading=false);
+  }
+
+  Future<void> _toggleComplete(TaskModel t) async {
+    final auth = Provider.of<AuthProvider>(context, listen:false);
+    final updated = {
+      'title': t.title,
+      'description': t.description,
+      'completed': !t.completed
+    };
+    final res = await api.updateTask(auth.token!, t.id, updated);
+    if (res['success']) {
+      await _loadTasks();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res['message'] ?? 'Failed')));
+    }
+  }
+
+  Future<void> _deleteTask(TaskModel t) async {
+    final auth = Provider.of<AuthProvider>(context, listen:false);
+    final res = await api.deleteTask(auth.token!, t.id);
+    if (res['success']) {
+      await _loadTasks();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res['message'] ?? 'Failed')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = Provider.of<AuthProvider>(context);
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Tasks'),
+        actions: [
+          IconButton(onPressed: ()=>Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen())), icon: const Icon(Icons.person)),
+          IconButton(onPressed: () async { await auth.logout(); Navigator.pushReplacementNamed(context, '/login'); }, icon: const Icon(Icons.logout)),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: _loadTasks,
+        child: loading ? const Center(child: CircularProgressIndicator()) : error != null ? Center(child: Text(error!)) : tasks.isEmpty ? ListView(children: const [SizedBox(height:200), Center(child: Text('No tasks yet'))]) : ListView.builder(
+          itemCount: tasks.length,
+          itemBuilder: (_, idx){
+            final t = tasks[idx];
+            return TaskTile(
+              task: t,
+              onToggle: () => _toggleComplete(t),
+              onEdit: () async {
+                await Navigator.push(context, MaterialPageRoute(builder: (_) => TaskFormScreen(task: t)));
+                await _loadTasks();
+              },
+              onDelete: () => _deleteTask(t),
+            );
+          },
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => const TaskFormScreen()));
+          await _loadTasks();
+        },
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}

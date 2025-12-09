@@ -1,0 +1,52 @@
+// register_screen.dart
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
+
+class RegisterScreen extends StatefulWidget {
+  const RegisterScreen({super.key});
+  @override
+  State<RegisterScreen> createState() => _RegisterScreenState();
+}
+
+class _RegisterScreenState extends State<RegisterScreen> {
+  final nameC = TextEditingController();
+  final emailC = TextEditingController();
+  final passC = TextEditingController();
+  bool loading = false;
+  String? error;
+
+  Future<void> _register() async {
+    setState(()=>loading=true);
+    final auth = Provider.of<AuthProvider>(context, listen:false);
+    final ok = await auth.register(nameC.text.trim(), emailC.text.trim(), passC.text.trim());
+    setState(()=>loading=false);
+    if (ok) {
+      Navigator.pushReplacementNamed(context, '/home');
+    } else {
+      setState(()=>error = auth.errorMessage ?? 'Registration failed');
+    }
+  }
+
+  @override void dispose(){nameC.dispose(); emailC.dispose(); passC.dispose(); super.dispose();}
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Register')),
+      body: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(children: [
+          TextField(controller: nameC, decoration: const InputDecoration(labelText: 'Name')),
+          const SizedBox(height:8),
+          TextField(controller: emailC, decoration: const InputDecoration(labelText: 'Email')),
+          const SizedBox(height:8),
+          TextField(controller: passC, decoration: const InputDecoration(labelText: 'Password'), obscureText: true),
+          const SizedBox(height:12),
+          if (error != null) Text(error!, style: const TextStyle(color: Colors.red)),
+          ElevatedButton(onPressed: loading ? null : _register, child: loading ? const CircularProgressIndicator(color: Colors.white) : const Text('Register')),
+        ]),
+      ),
+    );
+  }
+}

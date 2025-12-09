@@ -1,0 +1,76 @@
+// task_form_screen.dart
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
+import '../services/api_service.dart';
+import '../models/task.dart';
+
+class TaskFormScreen extends StatefulWidget {
+  final TaskModel? task;
+  const TaskFormScreen({super.key, this.task});
+
+  @override
+  State<TaskFormScreen> createState() => _TaskFormScreenState();
+}
+
+class _TaskFormScreenState extends State<TaskFormScreen> {
+  final titleC = TextEditingController();
+  final descC = TextEditingController();
+  bool loading = false;
+
+  @override
+  void initState(){
+    super.initState();
+    if (widget.task != null) {
+      titleC.text = widget.task!.title;
+      descC.text = widget.task!.description;
+    }
+  }
+
+  @override void dispose(){titleC.dispose(); descC.dispose(); super.dispose();}
+
+  Future<void> _save() async {
+    final auth = Provider.of<AuthProvider>(context, listen:false);
+    final api = auth.api;
+    if (titleC.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Title cannot be empty')));
+      return;
+    }
+    setState(()=>loading=true);
+    Map<String,dynamic> body = {
+      'title': titleC.text.trim(),
+      'description': descC.text.trim(),
+      'completed': widget.task?.completed ?? false,
+    };
+    Map<String,dynamic> res;
+    if (widget.task == null) {
+      res = await api.createTask(auth.token!, body);
+    } else {
+      res = await api.updateTask(auth.token!, widget.task!.id, body);
+    }
+    setState(()=>loading=false);
+    if (res['success']) {
+      Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res['message'] ?? 'Failed')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isEdit = widget.task != null;
+    return Scaffold(
+      appBar: AppBar(title: Text(isEdit ? 'Edit Task' : 'New Task')),
+      body: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(children: [
+          TextField(controller: titleC, decoration: const InputDecoration(labelText: 'Title')),
+          const SizedBox(height:8),
+          TextField(controller: descC, decoration: const InputDecoration(labelText: 'Description'), minLines: 2, maxLines: 5),
+          const SizedBox(height:12),
+          ElevatedButton(onPressed: loading ? null : _save, child: loading ? const CircularProgressIndicator(color: Colors.white) : const Text('Save'))
+        ]),
+      ),
+    );
+  }
+}

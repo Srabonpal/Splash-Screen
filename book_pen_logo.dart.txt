@@ -1,0 +1,58 @@
+// book_pen_logo.dart
+import 'package:flutter/material.dart';
+
+class BookPenLogo extends StatelessWidget {
+  final double size;
+  const BookPenLogo({super.key, this.size = 120});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: Size(size, size),
+      painter: _BookPenPainter(),
+    );
+  }
+}
+
+class _BookPenPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..isAntiAlias = true;
+
+    // Draw book (two pages)
+    final pagePaint = paint..color = Colors.orange.shade200;
+    final pageRect = Rect.fromLTWH(size.width*0.05, size.height*0.25, size.width*0.9, size.height*0.45);
+    final r = RRect.fromRectAndRadius(pageRect, const Radius.circular(8));
+    canvas.drawRRect(r, pagePaint);
+
+    // book spine
+    final spinePaint = paint..color = Colors.orange.shade400;
+    final spineRect = Rect.fromLTWH(size.width*0.05, size.height*0.25, size.width*0.15, size.height*0.45);
+    canvas.drawRect(spineRect, spinePaint);
+
+    // lines on page
+    final linePaint = Paint()..color = Colors.brown.shade700..strokeWidth = 1.0;
+    for (int i=0;i<4;i++){
+      final y = size.height*0.33 + i* (size.height*0.08);
+      canvas.drawLine(Offset(size.width*0.25, y), Offset(size.width*0.88, y), linePaint);
+    }
+
+    // pen - simple stylized pen
+    final penPaint = Paint()..color = Colors.blue.shade800;
+    final penBody = Rect.fromLTWH(size.width*0.62, size.height*0.05, size.width*0.12, size.height*0.55);
+    final penR = RRect.fromRectAndRadius(penBody, const Radius.circular(6));
+    canvas.drawRRect(penR, penPaint);
+
+    // pen tip
+    final tipPaint = Paint()..color = Colors.grey.shade800;
+    final path = Path();
+    path.moveTo(size.width*0.68, size.height*0.65);
+    path.lineTo(size.width*0.62, size.height*0.75);
+    path.lineTo(size.width*0.74, size.height*0.75);
+    path.close();
+    canvas.drawPath(path, tipPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}

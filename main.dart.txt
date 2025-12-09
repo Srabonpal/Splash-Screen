@@ -1,0 +1,44 @@
+// main.dart
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'constants.dart';
+import 'services/api_service.dart';
+import 'providers/auth_provider.dart';
+import 'screens/splash_screen.dart';
+import 'screens/login_screen.dart';
+import 'screens/register_screen.dart';
+import 'screens/home_screen.dart';
+import 'screens/task_form_screen.dart';
+import 'screens/profile_screen.dart';
+
+void main() {
+  final api = ApiService(baseUrl: BASE_URL);
+  runApp(MyApp(api: api));
+}
+
+class MyApp extends StatelessWidget {
+  final ApiService api;
+  const MyApp({super.key, required this.api});
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider<AuthProvider>(create: (_) => AuthProvider(api: api)),
+      ],
+      child: MaterialApp(
+        title: 'Task Manager',
+        theme: ThemeData(primarySwatch: Colors.indigo),
+        routes: {
+          '/': (_) => const SplashScreen(),
+          '/login': (_) => const LoginScreen(),
+          '/register': (_) => const RegisterScreen(),
+          '/home': (_) => const HomeScreen(),
+          '/task_form': (_) => const TaskFormScreen(),
+          '/profile': (_) => const ProfileScreen(),
+        },
+        initialRoute: '/',
+      ),
+    );
+  }
+}

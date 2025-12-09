@@ -1,0 +1,13 @@
+// constants.dart
+const String BASE_URL = "https://YOUR_LIVE_CLASS_API_BASE_URL"; 
+// Replace with your provided live-class API base URL before submitting
+
+// Endpoints - change only if your live-class APIs differ
+const String ENDPOINT_REGISTER = "/api/auth/register";
+const String ENDPOINT_LOGIN = "/api/auth/login";
+const String ENDPOINT_PROFILE = "/api/auth/profile";
+const String ENDPOINT_TASKS = "/api/tasks"; // GET list, POST create
+// For individual task operations: /api/tasks/{id} with PUT/PATCH/DELETE
+
+// Shared prefs keys
+const String PREFS_TOKEN = "auth_token";

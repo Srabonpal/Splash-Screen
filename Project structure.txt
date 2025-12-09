@@ -1,0 +1,21 @@
+lib/
+├─ main.dart
+├─ constants.dart
+├─ services/
+│  └─ api_service.dart
+├─ models/
+│  ├─ user.dart
+│  └─ task.dart
+├─ providers/
+│  └─ auth_provider.dart
+├─ screens/
+│  ├─ splash_screen.dart
+│  ├─ login_screen.dart
+│  ├─ register_screen.dart
+│  ├─ home_screen.dart
+│  ├─ task_form_screen.dart
+│  └─ profile_screen.dart
+└─ widgets/
+   ├─ book_pen_logo.dart
+   ├─ loading_widget.dart
+   └─ task_tile.dart

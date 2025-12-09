@@ -1,0 +1,98 @@
+// api_service.dart
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import '../constants.dart';
+
+class ApiService {
+  final String baseUrl;
+  ApiService({required this.baseUrl});
+
+  Future<String?> getToken() async {
+    final sp = await SharedPreferences.getInstance();
+    return sp.getString(PREFS_TOKEN);
+  }
+
+  Future<void> saveToken(String token) async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.setString(PREFS_TOKEN, token);
+  }
+
+  Future<void> removeToken() async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.remove(PREFS_TOKEN);
+  }
+
+  Map<String,String> _headers([String? token]) {
+    return {
+      'Content-Type': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token'
+    };
+  }
+
+  Uri _u(String path) => Uri.parse(baseUrl + path);
+
+  // Auth: register
+  Future<Map<String,dynamic>> register(String name, String email, String password) async {
+    final resp = await http.post(_u(ENDPOINT_REGISTER), headers: _headers(), body: jsonEncode({
+      'name': name,
+      'email': email,
+      'password': password,
+    }));
+    return _processResponse(resp);
+  }
+
+  // Auth: login
+  Future<Map<String,dynamic>> login(String email, String password) async {
+    final resp = await http.post(_u(ENDPOINT_LOGIN), headers: _headers(), body: jsonEncode({
+      'email': email,
+      'password': password,
+    }));
+    return _processResponse(resp);
+  }
+
+  // Profile
+  Future<Map<String,dynamic>> getProfile(String token) async {
+    final resp = await http.get(_u(ENDPOINT_PROFILE), headers: _headers(token));
+    return _processResponse(resp);
+  }
+
+  Future<Map<String,dynamic>> updateProfile(String token, Map<String, dynamic> body) async {
+    final resp = await http.put(_u(ENDPOINT_PROFILE), headers: _headers(token), body: jsonEncode(body));
+    return _processResponse(resp);
+  }
+
+  // Tasks
+  Future<Map<String,dynamic>> listTasks(String token) async {
+    final resp = await http.get(_u(ENDPOINT_TASKS), headers: _headers(token));
+    return _processResponse(resp);
+  }
+
+  Future<Map<String,dynamic>> createTask(String token, Map<String,dynamic> body) async {
+    final resp = await http.post(_u(ENDPOINT_TASKS), headers: _headers(token), body: jsonEncode(body));
+    return _processResponse(resp);
+  }
+
+  Future<Map<String,dynamic>> updateTask(String token, String id, Map<String,dynamic> body) async {
+    final resp = await http.put(_u('$ENDPOINT_TASKS/$id'), headers: _headers(token), body: jsonEncode(body));
+    return _processResponse(resp);
+  }
+
+  Future<Map<String,dynamic>> deleteTask(String token, String id) async {
+    final resp = await http.delete(_u('$ENDPOINT_TASKS/$id'), headers: _headers(token));
+    return _processResponse(resp);
+  }
+
+  Map<String,dynamic> _processResponse(http.Response resp) {
+    final int code = resp.statusCode;
+    final body = resp.body.isNotEmpty ? jsonDecode(resp.body) : {};
+    if (code >= 200 && code < 300) {
+      return {'success': true, 'data': body, 'status': code};
+    } else {
+      String message = 'Unknown error';
+      if (body is Map && body['message'] != null) message = body['message'].toString();
+      if (body is Map && body['errors'] != null) message = body['errors'].toString();
+      return {'success': false, 'message': message, 'status': code, 'data': body};
+    }
+  }
+}

@@ -1,0 +1,58 @@
+// profile_screen.dart
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
+
+class ProfileScreen extends StatefulWidget {
+  const ProfileScreen({super.key});
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  final nameC = TextEditingController();
+  final emailC = TextEditingController();
+  bool loading=false;
+
+  @override
+  void didChangeDependencies(){
+    super.didChangeDependencies();
+    final auth = Provider.of<AuthProvider>(context, listen:false);
+    if (auth.user != null) {
+      nameC.text = auth.user!.name;
+      emailC.text = auth.user!.email;
+    }
+  }
+
+  @override void dispose(){nameC.dispose(); emailC.dispose(); super.dispose();}
+
+  Future<void> _save() async {
+    setState(()=>loading=true);
+    final auth = Provider.of<AuthProvider>(context, listen:false);
+    if (auth.token == null) { setState(()=>loading=false); return; }
+    final res = await auth.api.updateProfile(auth.token!, {'name':nameC.text.trim(),'email': emailC.text.trim()});
+    setState(()=>loading=false);
+    if (res['success']) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile updated')));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res['message'] ?? 'Failed')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Profile')),
+      body: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(children: [
+          TextField(controller: nameC, decoration: const InputDecoration(labelText: 'Name')),
+          const SizedBox(height:8),
+          TextField(controller: emailC, decoration: const InputDecoration(labelText: 'Email')),
+          const SizedBox(height:12),
+          ElevatedButton(onPressed: loading ? null : _save, child: loading ? const CircularProgressIndicator(color: Colors.white) : const Text('Save')),
+        ]),
+      ),
+    );
+  }
+}

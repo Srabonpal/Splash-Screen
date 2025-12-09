@@ -1,0 +1,112 @@
+// auth_provider.dart
+import 'package:flutter/material.dart';
+import '../services/api_service.dart';
+import '../models/user.dart';
+import '../constants.dart';
+
+enum AuthState { loggedOut, loading, loggedIn, error }
+
+class AuthProvider extends ChangeNotifier {
+  final ApiService api;
+  String? token;
+  User? user;
+  AuthState state = AuthState.loggedOut;
+  String? errorMessage;
+
+  AuthProvider({required this.api});
+
+  Future<void> tryAutoLogin() async {
+    final saved = await api.getToken();
+    if (saved != null) {
+      token = saved;
+      state = AuthState.loading;
+      notifyListeners();
+      final res = await api.getProfile(token!);
+      if (res['success']) {
+        user = User.fromJson(res['data']);
+        state = AuthState.loggedIn;
+      } else {
+        token = null;
+        state = AuthState.loggedOut;
+      }
+      notifyListeners();
+    }
+  }
+
+  Future<bool> login(String email, String password) async {
+    state = AuthState.loading;
+    notifyListeners();
+    final res = await api.login(email, password);
+    if (res['success']) {
+      // expecting response contains token in data['token'] or similar
+      final data = res['data'];
+      String t = '';
+      if (data is Map && (data['token'] != null)) t = data['token'];
+      // fallback: data['access_token']
+      if (t.isEmpty && data['access_token'] != null) t = data['access_token'];
+
+      if (t.isEmpty) {
+        state = AuthState.error;
+        errorMessage = 'Token not found in response';
+        notifyListeners();
+        return false;
+      }
+      token = t;
+      await api.saveToken(token!);
+      // fetch profile
+      final p = await api.getProfile(token!);
+      if (p['success']) {
+        user = User.fromJson(p['data']);
+        state = AuthState.loggedIn;
+        notifyListeners();
+        return true;
+      } else {
+        state = AuthState.error;
+        errorMessage = p['message'] ?? 'Failed to load profile';
+        notifyListeners();
+        return false;
+      }
+    } else {
+      state = AuthState.error;
+      errorMessage = res['message'] ?? 'Login failed';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> register(String name, String email, String password) async {
+    state = AuthState.loading;
+    notifyListeners();
+    final res = await api.register(name, email, password);
+    if (res['success']) {
+      // often registration returns token; if not, ask user to login
+      final data = res['data'] as Map<String,dynamic>;
+      String t = '';
+      if (data['token'] != null) t = data['token'];
+      if (t.isNotEmpty) {
+        token = t;
+        await api.saveToken(token!);
+        final p = await api.getProfile(token!);
+        if (p['success']) user = User.fromJson(p['data']);
+        state = AuthState.loggedIn;
+      } else {
+        state = AuthState.loggedOut;
+      }
+      notifyListeners();
+      return true;
+    } else {
+      state = AuthState.error;
+      errorMessage = res['message'] ?? 'Registration failed';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<void> logout() async {
+    token = null;
+    user = null;
+    state = AuthState.loggedOut;
+    await api.removeToken();
+    notifyListeners();
+  }
+}
